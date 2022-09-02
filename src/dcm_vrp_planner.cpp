@@ -32,6 +32,8 @@ void DcmVrpPlanner::set_steptime_nominal(double t_nom)
     t_nom_ = t_nom;
 }
 
+// added by Siyu Chen
+// implementation 
 void DcmVrpPlanner::initialize(
     const double& l_min,
     const double& l_max,
@@ -56,10 +58,16 @@ void DcmVrpPlanner::initialize(
     omega_ = sqrt(9.81 / ht_);
     tau_min_ = exp(omega_ * t_min_);
     tau_max_ = exp(omega_ * t_max_);
-    bx_min_ = l_min_ / (tau_min_ - 1);
+    
+    // equation 28
+    bx_min_ = l_min_ / (tau_min_ - 1);// might be wrong here -> bx_min_ = l_min_ / (tau_max_ - 1);
     bx_max_ = l_max_ / (tau_min_ - 1);
+
+    // equation 32b
     by_max_in_ = l_p_ / (1 + tau_min_) +
                  (w_min_ - w_max_ * tau_min_) / (1 - exp(2 * omega_ * t_min_));
+    
+    // equation 32a
     by_max_out_ = l_p_ / (1 + tau_min_) +
                   (w_max_ - w_min_ * tau_min_) / (1 - exp(2 * omega_ * t_min_));
     nb_var_ = 9;
@@ -111,12 +119,24 @@ void DcmVrpPlanner::compute_nominal_step_values(
     const bool& is_left_leg_in_contact,
     const Eigen::Ref<const Eigen::Vector3d>& v_des_local)
 {
+    // sentence before equation 31
     const double contact_switcher = is_left_leg_in_contact ? 2.0 : 1.0;
+    
     tau_nom_ = exp(omega_ * t_nom_);
+
+    // equation 17
     l_nom_ = v_des_local(0) * t_nom_;
+    
+    // does not understand ???
+    // might be wrong here
+    // because equation 17 shows that w_nom_ = v_des_local(1) * t_nom_
     w_nom_ = is_left_leg_in_contact ? v_des_local(1) * t_nom_ - l_p_
                                     : v_des_local(1) * t_nom_ + l_p_;
+    
+    // equation 28
     bx_nom_ = l_nom_ / (tau_nom_ - 1);
+
+    // equation 31
     by_nom_ = (pow(-1, contact_switcher) * (l_p_ / (1 + tau_nom_))) -
               v_des_local(1) * t_nom_ / (1 - tau_nom_);
 }
@@ -156,19 +176,29 @@ void DcmVrpPlanner::update(
     const Eigen::Ref<const Eigen::Vector3d>& com_vel,
     const pinocchio::SE3& world_M_base,
     const double& new_t_min)
-{
+{   
+    std::cout<<"DcmVrpPlanner::update is called"<<std::endl;
     time_from_last_step_touchdown_ = time_from_last_step_touchdown;
     double ground_height = 0.0;
 
     // Local frame parallel to the world frame and aligned with the base yaw.
+    // local frame is CoP frame
     world_M_local_.translation() << world_M_base.translation()(0),
         world_M_base.translation()(1), ground_height;
+    // now world_M_local_.translation() is exactly current_step_location
+
     world_M_local_.rotation() = world_M_base.rotation();
 
     // Compute the DCM in the local frame.
+    // dcm = x + xdot/omega 
+    // formula before equation 2a
     dcm_local_.head<2>() = com_vel.head<2>() / omega_ + com.head<2>();
     dcm_local_(2) = ground_height;
+    // until now dcm_local_ is in the world frame
+
+    // it means: world_M_local_.rotation().transpose() * dcm_local_
     dcm_local_ = world_M_local_.actInv(dcm_local_);
+    // now dcm_local_ is in the local frame
 
     // Express the desired velocity in the local frame.
     v_des_local_ = v_des;
@@ -177,11 +207,13 @@ void DcmVrpPlanner::update(
     // Nominal value tracked by the QP.
     compute_nominal_step_values(is_left_leg_in_contact, v_des_local_);
 
-    // Current step location in the local frame.
+    // transform current step location from world frame into the local frame.
     const Eigen::Vector3d& tmp = current_step_location;
     current_step_location_local_ = world_M_local_.actInv(tmp);
 
     // DCM nominal
+    // don't use it for calculation but it seems to be wrong
+    // Siyu Chen
     dcm_nominal_ = (com_vel / omega_ + com - current_step_location) * tau_nom_;
     dcm_nominal_(2) = 0.0;
 
@@ -198,11 +230,15 @@ void DcmVrpPlanner::update(
 
     // Inequality constraints
     // A_ineq_ is constant see initialize.
+    // correct
     double w_max_local, w_min_local, by_max, by_min;
     if (is_left_leg_in_contact)
     {
+        // since w_min is a negative number, w_max is a positive number 
         w_max_local = -w_min_ - l_p_;
         w_min_local = -w_max_ - l_p_;
+        // until now correct
+
         by_max = -by_max_out_;  // by_max_in_;
         by_min = -by_max_in_;   // by_max_out_;
     }
@@ -210,6 +246,8 @@ void DcmVrpPlanner::update(
     {
         w_max_local = w_max_ + l_p_;
         w_min_local = w_min_ + l_p_;
+        // until now correct
+
         by_max = by_max_in_;   //-by_max_out_;
         by_min = by_max_out_;  //-by_max_in_;
     }
@@ -217,6 +255,7 @@ void DcmVrpPlanner::update(
         omega_ *
         std::max(t_min_, time_from_last_step_touchdown_ + new_t_min - 0.0001));
 
+    // equation 20
     // clang-format off
     B_ineq_ << l_max_,                // 0
             w_max_local,           // 1
@@ -237,6 +276,7 @@ void DcmVrpPlanner::update(
                   exp(-1.0 * omega_ * time_from_last_step_touchdown);
 
     // clang-format off
+    // u_T + b = (xi_mea - u_0) * exp( - omega * t) * tau 
     A_eq_ << 1.0, 0.0, -1.0 * tmp0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0,
              0.0, 1.0, -1.0 * tmp1, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0;
 

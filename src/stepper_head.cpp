@@ -39,9 +39,11 @@ void StepperHead::run(const double& duration_before_foot_landing,
 
     // Compute the time_from_last_step_touchdown_
     time_from_last_step_touchdown_ = current_time_ - time_support_switch_;
+    std::cout<<"time_from_last_step_touchdown_:"<<time_from_last_step_touchdown_<<std::endl;
     if (time_from_last_step_touchdown_ > duration_before_foot_landing_)
     {
         // Switch the contact phase.
+        std::cout<<"Switch the contact phase"<<std::endl;
         is_left_leg_in_contact_ = !is_left_leg_in_contact_;
         time_support_switch_ = current_time;
         time_from_last_step_touchdown_ = 0.0;

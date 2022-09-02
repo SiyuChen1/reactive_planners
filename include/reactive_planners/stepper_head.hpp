@@ -10,6 +10,7 @@
 #pragma once
 
 #include "Eigen/Eigen"
+#include <iostream>
 
 namespace reactive_planners
 {

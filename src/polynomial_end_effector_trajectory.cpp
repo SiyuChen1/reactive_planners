@@ -86,6 +86,8 @@ bool PolynomialEndEffectorTrajectory::compute(
     const double& end_time)
 {
     // scaling the problem
+    // duration is step duration
+    // start_time is always 0.0
     double duration = (end_time - start_time);
     double local_current_time = (current_time - start_time) / duration;
     double local_end_time = 1.0;
@@ -96,6 +98,8 @@ bool PolynomialEndEffectorTrajectory::compute(
     current_pose_ = current_pose;
     current_velocity_ = current_velocity;
     current_acceleration_ = current_acceleration;
+
+    // target pos is next support foot position
     target_pose_ = target_pose;
     start_time_ = start_time;
     current_time_ = current_time;
