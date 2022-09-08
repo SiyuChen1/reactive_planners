@@ -102,5 +102,9 @@ void bind_dcm_reactive_stepper(pybind11::module &module)
              &DcmReactiveStepper::get_flying_foot_position)
         .def("get_is_left_leg_in_contact",
              &DcmReactiveStepper::get_is_left_leg_in_contact)
-        .def("get_forces", &DcmReactiveStepper::get_forces);
+        .def("get_forces", &DcmReactiveStepper::get_forces)
+
+        .def("set_polynomial_end_effector_trajectory", &DcmReactiveStepper::set_polynomial_end_effector_trajectory)
+
+        .def("set_dynamical_end_effector_trajectory", &DcmReactiveStepper::set_dynamical_end_effector_trajectory);
 }

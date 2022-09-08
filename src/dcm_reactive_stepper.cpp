@@ -11,7 +11,7 @@
 
 namespace reactive_planners
 {
-DcmReactiveStepper::DcmReactiveStepper(bool is_using_mpc)
+DcmReactiveStepper::DcmReactiveStepper()
 {
     // Parameters
     control_period_ = 0.0;
@@ -33,9 +33,7 @@ DcmReactiveStepper::DcmReactiveStepper(bool is_using_mpc)
     running_ = false;
     local_frame_.setIdentity();
     nb_usage_of_force_ = 0.;
-    // new_ = true;
-    // for debugging use new_ = false;
-    new_ = is_using_mpc;
+    new_ = true;
 }
 
 DcmReactiveStepper::~DcmReactiveStepper() = default;

@@ -50,6 +50,7 @@ if __name__ == "__main__":
     sim_freq = 10000  # Hz
     ctrl_freq = 1000
     plan_freq = 1000
+    is_using_mpc = True
 
     p.resetDebugVisualizerCamera(1.6, 50, -35, (0.0, 0.0, 0.0))
     p.setTimeStep(1.0 / sim_freq)
@@ -258,12 +259,18 @@ if __name__ == "__main__":
     ]
 
     past_x = x_des_local.copy()
-    v_des = [0.1, 0.1, 0.0]
+    v_des = [0.5, 0.5, 0.0]
     sim = LipmSimpulator(com_height)
 
     # definition of class DcmReactiveStepper()
     # src/reactive_planners/python/reactive_planners/dcm_reactive_stepper.py
     dcm_reactive_stepper = DcmReactiveStepper()
+
+    if not is_using_mpc:
+        dcm_reactive_stepper.set_polynomial_end_effector_trajectory()
+    else:
+        dcm_reactive_stepper.set_dynamical_end_effector_trajectory()
+    
     dcm_reactive_stepper.initialize(
         is_left_leg_in_contact,
         l_min,
@@ -468,9 +475,7 @@ if __name__ == "__main__":
         #         only computed for active endeffectors.
         #     w_com: Desired centroidal wrench to achieve given forces.
         # Returns:
-        #     Computed forces as a plain array of size 3 * num_endeffectors.
-        # """
-
+        #     Computed forces as a if is_using_mpc:
         print("cnt_array = ", cnt_array)
         F = centr_controller.compute_force_qp(q, qdot, cnt_array, w_com)
 
@@ -486,10 +491,11 @@ if __name__ == "__main__":
         
         print("des_vel = ", des_vel)
 
-        # if cnt_array[0] == 1 and cnt_array[1] == 0:
-        #     F[3:] = -dcm_force[:3]
-        # elif cnt_array[0] == 0 and cnt_array[1] == 1:
-        #     F[:3] = -dcm_force[:3]
+        if is_using_mpc:
+            if cnt_array[0] == 1 and cnt_array[1] == 0:
+                F[3:] = -dcm_force[:3]
+            elif cnt_array[0] == 0 and cnt_array[1] == 1:
+                F[:3] = -dcm_force[:3]
         
         """
         Returns the joint torques at the current timestep
