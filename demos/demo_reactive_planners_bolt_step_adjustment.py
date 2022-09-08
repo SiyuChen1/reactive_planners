@@ -258,7 +258,7 @@ if __name__ == "__main__":
     ]
 
     past_x = x_des_local.copy()
-    v_des = [0.5, 0.3, 0.0]
+    v_des = [0.1, 0.1, 0.0]
     sim = LipmSimpulator(com_height)
 
     # definition of class DcmReactiveStepper()
@@ -297,7 +297,7 @@ if __name__ == "__main__":
     dcm_reactive_stepper.start()
 
     # for i in range(9):
-    for i in range(1):
+    for i in range(5055):
         last_qdot = qdot
         q, qdot = robot.get_state()
 

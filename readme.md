@@ -45,7 +45,6 @@ sudo apt update
 
 sudo apt install cmake build-essential
 
-
 sudo apt install git
 
 git config --global user.email siyuchen1996@gmail.com
